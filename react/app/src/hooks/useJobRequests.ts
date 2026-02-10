@@ -53,12 +53,12 @@ export function useJobRequests() {
     try {
       // Fetch pending jobs that need workers
       // Fetch pending jobs that need workers
-      const pendingRes = await fetch(`${API}/api/bookings?status=pending&is_worker_null=1&limit=10`);
+      const pendingRes = await fetch(`${API}/bookings?status=pending&is_worker_null=1&limit=10`);
       if (!pendingRes.ok) throw new Error('Failed to fetch pending jobs');
       const pending = await pendingRes.json();
 
       // Fetch active jobs assigned to this worker by resolving worker profile
-      const activeRes = await fetch(`${API}/api/bookings?worker_user_id=${user.id}`);
+      const activeRes = await fetch(`${API}/bookings?worker_user_id=${user.id}`);
       if (!activeRes.ok) throw new Error('Failed to fetch active jobs');
       const activeData = await activeRes.json();
 
@@ -76,7 +76,7 @@ export function useJobRequests() {
   const subscribeToJobs = () => {
     // Realtime not implemented in this migration. Placeholder for future websocket/SSE implementation.
     console.warn('subscribeToJobs is not implemented yet (no realtime).');
-    return () => {};
+    return () => { };
   };
 
   const acceptJob = async (jobId: string) => {
@@ -84,7 +84,7 @@ export function useJobRequests() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/bookings/${jobId}`, {
+      const res = await fetch(`${API}/bookings/${jobId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ worker: user.id, status: 'accepted', updated_at: new Date().toISOString() })
       });
@@ -110,7 +110,7 @@ export function useJobRequests() {
   const rejectJob = async (jobId: string) => {
     // For now, just remove from local state (no penalty policy)
     setPendingJobs(prev => prev.filter(job => job.id !== jobId));
-    
+
     toast({
       title: 'Job Skipped',
       description: 'No worries! You can accept other jobs.',
@@ -124,7 +124,7 @@ export function useJobRequests() {
 
     try {
       // Verify OTP and start job
-      const otpRes = await fetch(`${API}/api/bookings/${jobId}`);
+      const otpRes = await fetch(`${API}/bookings/${jobId}`);
       if (!otpRes.ok) throw new Error('Unable to fetch booking');
       const booking = await otpRes.json();
 
@@ -138,7 +138,7 @@ export function useJobRequests() {
       }
 
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/bookings/${jobId}`, {
+      const res = await fetch(`${API}/bookings/${jobId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'in_progress', otp_verified: true, started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       });
@@ -167,7 +167,7 @@ export function useJobRequests() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/bookings/${jobId}`, {
+      const res = await fetch(`${API}/bookings/${jobId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       });
