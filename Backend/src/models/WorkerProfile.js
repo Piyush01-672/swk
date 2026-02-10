@@ -1,11 +1,18 @@
-import mongoose from 'mongoose';
+import { getDb } from '../config/db.js';
 
-const WorkerProfileSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { type: String, enum: ['online', 'offline'], default: 'offline' },
-  bio: { type: String },
-  location: { type: String },
-  extra: { type: Object },
-}, { timestamps: true });
+const COLLECTION = 'worker_profiles';
 
-export default mongoose.model('WorkerProfile', WorkerProfileSchema);
+export const WorkerProfile = {
+  collection: () => getDb().collection(COLLECTION),
+
+  validate: (data) => {
+    const errors = [];
+    if (!data.user_id) errors.push('User ID is required');
+    return errors;
+  },
+
+  createIndexes: async () => {
+    const db = getDb();
+    await db.collection(COLLECTION).createIndex({ user_id: 1 }, { unique: true });
+  }
+};

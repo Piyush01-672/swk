@@ -1,43 +1,30 @@
-import { getDb } from '../config/db.js';
+import { User } from '../models/User.js';
 import { ObjectId } from 'mongodb';
 
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
-    // Prevent updating password via this route
-    if (updates.password) delete updates.password;
-    
-    // Also update updatedAt
+
+    // Security: don't allow updating sensitive fields directly here if not needed
+    delete updates.password;
+    delete updates.email; // Usually requires separate flow
+    delete updates.role; // Prevent role escalation
+    delete updates._id;
+
     updates.updatedAt = new Date();
 
-    const db = getDb();
-    const result = await db.collection('users').findOneAndUpdate(
+    const result = await User.collection().findOneAndUpdate(
       { _id: new ObjectId(id) },
       { $set: updates },
-      { returnDocument: 'after', projection: { password: 0 } }
+      { returnDocument: 'after' }
     );
-    
-    if (!result.value) return res.status(404).json({ message: 'Not found' });
-    res.json(result.value);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
 
-export const getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const db = getDb();
-    const user = await db.collection('users').findOne(
-      { _id: new ObjectId(id) },
-      { projection: { password: 0 } }
-    );
-    
-    if (!user) return res.status(404).json({ message: 'Not found' });
-    res.json(user);
+    if (!result.value && !result) return res.status(404).json({ message: 'User not found' });
+
+    const user = result.value || result;
+    const { password, ...safeUser } = user;
+    res.json(safeUser);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

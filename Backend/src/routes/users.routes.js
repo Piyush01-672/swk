@@ -1,16 +1,9 @@
-import express from "express";
-import { getDb } from "../config/db.js";
+import express from 'express';
+import { updateUser } from '../controllers/user.controller.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  try {
-    const db = getDb();
-    const users = await db.collection("users").find({}).toArray();
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.patch('/:id', protect, updateUser);
 
 export default router;

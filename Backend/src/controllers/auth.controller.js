@@ -1,3 +1,5 @@
+import { User } from '../models/User.js';
+import { WorkerProfile } from '../models/WorkerProfile.js';
 import { getDb } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -10,10 +12,12 @@ const generateToken = (user) => {
 export const register = async (req, res) => {
   try {
     const { email, password, full_name, role } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Email and password are required' });
 
-    const db = getDb();
-    const existing = await db.collection('users').findOne({ email });
+    // Validate
+    const errors = User.validate({ email, password });
+    if (errors.length > 0) return res.status(400).json({ message: errors.join(', ') });
+
+    const existing = await User.collection().findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already in use' });
 
     const salt = await bcrypt.genSalt(10);
@@ -28,14 +32,14 @@ export const register = async (req, res) => {
       updatedAt: new Date()
     };
 
-    const result = await db.collection('users').insertOne(newUser);
+    const result = await User.collection().insertOne(newUser);
     const user = { ...newUser, _id: result.insertedId };
 
     // Create related profile records
     if (user.role === 'worker') {
-      await db.collection('worker_profiles').insertOne({ user: user._id, createdAt: new Date() });
+      await WorkerProfile.collection().insertOne({ user: user._id, createdAt: new Date(), status: 'offline' });
     } else {
-      await db.collection('customers').insertOne({ user: user._id, full_name: full_name || '', email, createdAt: new Date() });
+      await getDb().collection('customers').insertOne({ user: user._id, full_name: full_name || '', email, createdAt: new Date() });
     }
 
     const token = generateToken(user);
@@ -49,8 +53,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = getDb();
-    const user = await db.collection('users').findOne({ email });
+    const user = await User.collection().findOne({ email });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -68,16 +71,14 @@ export const getMe = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ message: 'No token' });
-    
+
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'changeme');
-    
-    const db = getDb();
-    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.id) });
-    
+
+    const user = await User.collection().findOne({ _id: new ObjectId(decoded.id) });
+
     if (!user) return res.status(404).json({ message: 'Not found' });
-    
-    // Remove password from response
+
     const { password, ...userWithoutPassword } = user;
     res.json({ user: userWithoutPassword });
   } catch (err) {

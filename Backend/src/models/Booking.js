@@ -1,13 +1,21 @@
-import mongoose from 'mongoose';
+import { getDb } from '../config/db.js';
 
-const BookingSchema = new mongoose.Schema({
-  service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
-  worker: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkerProfile' },
-  status: { type: String, enum: ['pending','matched','accepted','in_progress','completed','cancelled'], default: 'pending' },
-  scheduled_at: { type: Date },
-  address: { type: String },
-  city: { type: String },
-}, { timestamps: true });
+const COLLECTION = 'bookings';
 
-export default mongoose.model('Booking', BookingSchema);
+export const Booking = {
+  collection: () => getDb().collection(COLLECTION),
+
+  validate: (data) => {
+    const errors = [];
+    if (!data.customer_id) errors.push('Customer ID is required');
+    if (!data.worker_id) errors.push('Worker ID is required');
+    if (!data.service) errors.push('Service details are required');
+    return errors;
+  },
+
+  createIndexes: async () => {
+    const db = getDb();
+    await db.collection(COLLECTION).createIndex({ customer_id: 1 });
+    await db.collection(COLLECTION).createIndex({ worker_id: 1 });
+  }
+};

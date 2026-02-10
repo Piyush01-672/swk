@@ -1,10 +1,11 @@
 import express from 'express';
 import { createBooking, listBookings, updateBooking, getByWorkerId, getById } from '../controllers/booking.controller.js';
+import { queryParser } from '../middlewares/queryParser.js';
 
 const router = express.Router();
 
-// List bookings
-router.get('/', listBookings);
+// List bookings with query parser
+router.get('/', queryParser, listBookings);
 
 // Create a new booking
 router.post('/', createBooking);
