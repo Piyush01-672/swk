@@ -1,5 +1,5 @@
 // Supabase compatibility wrapper: replaced by REST API calls to backend
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:5000';
 
 interface Filter {
   field: string;
@@ -18,140 +18,140 @@ function buildQuery(filters: Filter[]) {
 }
 
 function from(table: string) {
-  const state = { 
-    table, 
-    filters: [] as Filter[], 
-    selectFields: '*', 
-    singleFlag: false, 
-    orderBy: null as { field: string, opts: any } | null, 
+  const state = {
+    table,
+    filters: [] as Filter[],
+    selectFields: '*',
+    singleFlag: false,
+    orderBy: null as { field: string, opts: any } | null,
     payload: null as any,
     operation: 'SELECT', // SELECT, UPDATE, INSERT, DELETE, UPSERT
     limitVal: null as number | null
   };
 
   const execute = async () => {
-      try {
-        let res, data, error = null;
+    try {
+      let res, data, error = null;
 
-        // --- UPDATE ---
-        if (state.operation === 'UPDATE') {
-          // Special handling for worker_profiles update by user_id
-          if (state.table === 'worker_profiles') {
-            const userFilter = state.filters.find(f => f.field === 'user_id');
-            if (userFilter) {
-              res = await fetch(`${API_BASE}/api/worker-profiles/user/${userFilter.value}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
-              });
-            } else {
-               // Try generic update if ID is present
-               const idFilter = state.filters.find(f => f.field === 'id');
-               if (idFilter) {
-                  // Not implemented generic update yet, assuming worker profile mainly
-                  error = { message: 'Update by ID not fully implemented in wrapper' };
-               } else {
-                  error = { message: 'Update requires user_id filter for worker_profiles' };
-               }
-            }
-          } else if (state.table === 'profiles') {
-             // Handle profiles update
-             const idFilter = state.filters.find(f => f.field === 'id');
-             if (idFilter) {
-               res = await fetch(`${API_BASE}/api/users/${idFilter.value}`, {
-                 method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
-               });
-             } else {
-               error = { message: 'Update profiles requires id' };
-             }
-          } else if (state.table === 'bookings') {
-             // Handle bookings update
-             const idFilter = state.filters.find(f => f.field === 'id');
-             if (idFilter) {
-               res = await fetch(`${API_BASE}/api/bookings/${idFilter.value}`, {
-                 method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
-               });
-             } else {
-               error = { message: 'Update bookings requires id' };
-             }
+      // --- UPDATE ---
+      if (state.operation === 'UPDATE') {
+        // Special handling for worker_profiles update by user_id
+        if (state.table === 'worker_profiles') {
+          const userFilter = state.filters.find(f => f.field === 'user_id');
+          if (userFilter) {
+            res = await fetch(`${API_BASE}/api/worker-profiles/user/${userFilter.value}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
+            });
           } else {
-            // Generic update logic (mock)
-             error = { message: `Update not implemented for table ${state.table}` };
+            // Try generic update if ID is present
+            const idFilter = state.filters.find(f => f.field === 'id');
+            if (idFilter) {
+              // Not implemented generic update yet, assuming worker profile mainly
+              error = { message: 'Update by ID not fully implemented in wrapper' };
+            } else {
+              error = { message: 'Update requires user_id filter for worker_profiles' };
+            }
           }
-          
-          if (!error && res) {
-             if (!res.ok) error = await res.json();
-             else data = await res.json();
+        } else if (state.table === 'profiles') {
+          // Handle profiles update
+          const idFilter = state.filters.find(f => f.field === 'id');
+          if (idFilter) {
+            res = await fetch(`${API_BASE}/api/users/${idFilter.value}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
+            });
+          } else {
+            error = { message: 'Update profiles requires id' };
           }
+        } else if (state.table === 'bookings') {
+          // Handle bookings update
+          const idFilter = state.filters.find(f => f.field === 'id');
+          if (idFilter) {
+            res = await fetch(`${API_BASE}/api/bookings/${idFilter.value}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
+            });
+          } else {
+            error = { message: 'Update bookings requires id' };
+          }
+        } else {
+          // Generic update logic (mock)
+          error = { message: `Update not implemented for table ${state.table}` };
+        }
 
-        // --- INSERT / UPSERT ---
-        } else if (state.operation === 'INSERT' || state.operation === 'UPSERT') {
-          // For UPSERT, we should ideally check existence, but for now map to POST (backend should handle duplicates or we map to update if ID exists)
-          // Since this is a simple wrapper, we'll try POST.
-          res = await fetch(`${API_BASE}/api/${state.table}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
-          });
+        if (!error && res) {
           if (!res.ok) error = await res.json();
           else data = await res.json();
+        }
+
+        // --- INSERT / UPSERT ---
+      } else if (state.operation === 'INSERT' || state.operation === 'UPSERT') {
+        // For UPSERT, we should ideally check existence, but for now map to POST (backend should handle duplicates or we map to update if ID exists)
+        // Since this is a simple wrapper, we'll try POST.
+        res = await fetch(`${API_BASE}/api/${state.table}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.payload)
+        });
+        if (!res.ok) error = await res.json();
+        else data = await res.json();
 
         // --- SELECT ---
-        } else {
-          // Worker profiles select by user_id
-          if (state.table === 'worker_profiles') {
-            const userFilter = state.filters.find(f => f.field === 'user_id');
-            if (userFilter) {
-              res = await fetch(`${API_BASE}/api/worker-profiles/user/${userFilter.value}`);
-              if (res.ok) data = await res.json();
-              else error = await res.json();
-            } else {
-              // List all or filter
-               const q = buildQuery(state.filters);
-               res = await fetch(`${API_BASE}/api/worker-profiles${q ? `?${q}` : ''}`);
-               if (res.ok) data = await res.json();
-               else error = await res.json();
-            }
-          } 
-          // Bookings select by worker_id
-          else if (state.table === 'bookings') {
-            const workerFilter = state.filters.find(f => f.field === 'worker_id');
-            if (workerFilter) {
-              res = await fetch(`${API_BASE}/api/bookings/worker/${workerFilter.value}`);
-              if (res.ok) data = await res.json();
-              else error = await res.json();
-            } else {
-               const q = buildQuery(state.filters);
-               res = await fetch(`${API_BASE}/api/bookings${q ? `?${q}` : ''}`);
-               if (res.ok) data = await res.json();
-               else error = await res.json();
-            }
-          }
-          // Default Generic List
-          else {
+      } else {
+        // Worker profiles select by user_id
+        if (state.table === 'worker_profiles') {
+          const userFilter = state.filters.find(f => f.field === 'user_id');
+          if (userFilter) {
+            res = await fetch(`${API_BASE}/api/worker-profiles/user/${userFilter.value}`);
+            if (res.ok) data = await res.json();
+            else error = await res.json();
+          } else {
+            // List all or filter
             const q = buildQuery(state.filters);
-            const url = `${API_BASE}/api/${state.table}${q ? `?${q}` : ''}`;
-            res = await fetch(url);
+            res = await fetch(`${API_BASE}/api/worker-profiles${q ? `?${q}` : ''}`);
             if (res.ok) data = await res.json();
             else error = await res.json();
           }
         }
-
-        return { data, error };
-      } catch (err) {
-        return { data: null, error: err };
+        // Bookings select by worker_id
+        else if (state.table === 'bookings') {
+          const workerFilter = state.filters.find(f => f.field === 'worker_id');
+          if (workerFilter) {
+            res = await fetch(`${API_BASE}/api/bookings/worker/${workerFilter.value}`);
+            if (res.ok) data = await res.json();
+            else error = await res.json();
+          } else {
+            const q = buildQuery(state.filters);
+            res = await fetch(`${API_BASE}/api/bookings${q ? `?${q}` : ''}`);
+            if (res.ok) data = await res.json();
+            else error = await res.json();
+          }
+        }
+        // Default Generic List
+        else {
+          const q = buildQuery(state.filters);
+          const url = `${API_BASE}/api/${state.table}${q ? `?${q}` : ''}`;
+          res = await fetch(url);
+          if (res.ok) data = await res.json();
+          else error = await res.json();
+        }
       }
+
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: err };
+    }
   };
 
   const builder = {
-    select(fields = '*') { 
+    select(fields = '*') {
       state.operation = 'SELECT';
-      state.selectFields = fields; 
-      return builder; 
+      state.selectFields = fields;
+      return builder;
     },
-    eq(field: string, value: any) { 
-      state.filters.push({ field, value, operator: 'eq' }); 
-      return builder; 
+    eq(field: string, value: any) {
+      state.filters.push({ field, value, operator: 'eq' });
+      return builder;
     },
-    ilike(field: string, value: any) { 
-      state.filters.push({ field, value, operator: 'ilike' }); 
-      return builder; 
+    ilike(field: string, value: any) {
+      state.filters.push({ field, value, operator: 'ilike' });
+      return builder;
     },
     gte(field: string, value: any) {
       state.filters.push({ field, value, operator: 'gte' });
@@ -169,17 +169,17 @@ function from(table: string) {
       state.filters.push({ field: 'or', value: query, operator: 'or' });
       return builder;
     },
-    single() { 
-      state.singleFlag = true; 
-      return builder; 
+    single() {
+      state.singleFlag = true;
+      return builder;
     },
-    maybeSingle() { 
-      state.singleFlag = true; 
-      return builder; 
+    maybeSingle() {
+      state.singleFlag = true;
+      return builder;
     },
-    order(field: string, opts = {}) { 
-      state.orderBy = { field, opts }; 
-      return builder; 
+    order(field: string, opts = {}) {
+      state.orderBy = { field, opts };
+      return builder;
     },
     limit(n: number) {
       state.limitVal = n;

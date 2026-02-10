@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { error: new Error('Not authenticated') };
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/users/${user.id || user._id}`, {
+      const res = await fetch(`${API}/users/${user.id || user._id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(updates)
       });
@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasCompletedOnboarding = async (userId: string): Promise<boolean> => {
     try {
-      const res = await fetch(`${API}/api/worker-profiles/user/${userId}`);
+      const res = await fetch(`${API}/worker-profiles/user/${userId}`);
       return res.ok;
     } catch (err) {
       return false;
