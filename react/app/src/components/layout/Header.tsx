@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Menu, X, MapPin, ChevronDown, User, LogOut, 
+import {
+  Menu, X, MapPin, ChevronDown, User, LogOut,
   Settings, Bell, Search, Globe, Shield, Sparkles, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,18 +56,18 @@ export function Header() {
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-500",
-      isScrolled 
-        ? "bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm py-3" 
+      isScrolled
+        ? "bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm py-3"
         : "bg-transparent py-5"
     )}>
       <div className="container flex items-center justify-between px-4">
-        
+
         {/* Logo Section */}
         <div className="flex items-center gap-3">
           {location.pathname !== '/' && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => navigate(-1)}
               className="lg:hidden h-10 w-10 rounded-xl bg-slate-50 border border-slate-100"
             >
@@ -75,7 +75,7 @@ export function Header() {
             </Button>
           )}
           <Link to="/" className="flex items-center gap-2 group">
-            <motion.div 
+            <motion.div
               whileHover={{ rotate: 10, scale: 1.1 }}
               className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-lg shadow-primary/20"
             >
@@ -98,8 +98,8 @@ export function Header() {
                 to={link.href}
                 className={cn(
                   "px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300",
-                  isActive 
-                    ? "bg-white text-primary shadow-sm" 
+                  isActive
+                    ? "bg-white text-primary shadow-sm"
                     : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                 )}
               >
@@ -111,7 +111,7 @@ export function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-3">
-          
+
           {/* Location Picker - Hidden on very small screens */}
           <button className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white/50 hover:bg-white hover:border-primary/30 transition-all duration-300 text-sm font-bold text-slate-600">
             <MapPin className="h-4 w-4 text-primary" />
@@ -121,69 +121,70 @@ export function Header() {
 
           {/* User Section */}
           <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-2xl p-1 shadow-sm">
-             {/* Language Dropdown */}
-             <DropdownMenu>
+            {/* Language Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 px-3 rounded-lg font-bold gap-2 text-slate-600">
+                  <Globe className="h-4 w-4" />
+                  {language === 'en' ? 'EN' : 'HI'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl p-1">
+                {languageOptions.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code as Language)}
+                    className={cn("rounded-lg font-medium", language === lang.code && 'bg-primary/5 text-primary')}
+                  >
+                    {lang.nativeName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {user && <NotificationBell />}
+
+            <div className="w-px h-6 bg-slate-100 mx-1" />
+
+            {user ? (
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 px-3 rounded-lg font-bold gap-2 text-slate-600">
-                    <Globe className="h-4 w-4" />
-                    {language === 'en' ? 'EN' : 'HI'}
+                  <Button variant="ghost" className="h-9 w-9 rounded-lg p-0 bg-primary/5 hover:bg-primary/10 transition-colors">
+                    <div className="h-7 w-7 rounded-md bg-primary text-white flex items-center justify-center font-black text-xs">
+                      {profile?.full_name?.[0]?.toUpperCase() || 'U'}
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl p-1">
-                  {languageOptions.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code as Language)}
-                      className={cn("rounded-lg font-medium", language === lang.code && 'bg-primary/5 text-primary')}
-                    >
-                      {lang.nativeName}
-                    </DropdownMenuItem>
-                  ))}
+                <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl border-slate-100">
+                  <div className="p-3 bg-slate-50 rounded-xl mb-2">
+                    <p className="font-black text-slate-800 leading-none">{profile?.full_name}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mt-1 tracking-wider">{profile?.role}</p>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="rounded-xl py-3 cursor-pointer">
+                    <User className="mr-3 h-4 w-4 text-slate-400" />
+                    <span className="font-bold">My Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')} className="rounded-xl py-3 cursor-pointer">
+                    <Settings className="mr-3 h-4 w-4 text-slate-400" />
+                    <span className="font-bold">Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-2" />
+                  <DropdownMenuItem onClick={handleSignOut} className="rounded-xl py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                    <LogOut className="mr-3 h-4 w-4" />
+                    <span className="font-bold">Logout</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
-             </DropdownMenu>
-
-             {user && <NotificationBell />}
-
-             <div className="w-px h-6 bg-slate-100 mx-1" />
-
-             {user ? (
-               <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                   <Button variant="ghost" className="h-9 w-9 rounded-lg p-0 bg-primary/5 hover:bg-primary/10 transition-colors">
-                     <div className="h-7 w-7 rounded-md bg-primary text-white flex items-center justify-center font-black text-xs">
-                        {profile?.full_name?.[0]?.toUpperCase() || 'U'}
-                     </div>
-                   </Button>
-                 </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl border-slate-100">
-                   <div className="p-3 bg-slate-50 rounded-xl mb-2">
-                     <p className="font-black text-slate-800 leading-none">{profile?.full_name}</p>
-                     <p className="text-[10px] uppercase font-bold text-slate-400 mt-1 tracking-wider">{profile?.role}</p>
-                   </div>
-                   <DropdownMenuItem onClick={() => navigate('/profile')} className="rounded-xl py-3 cursor-pointer">
-                     <User className="mr-3 h-4 w-4 text-slate-400" />
-                     <span className="font-bold">My Profile</span>
-                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => navigate('/settings')} className="rounded-xl py-3 cursor-pointer">
-                     <Settings className="mr-3 h-4 w-4 text-slate-400" />
-                     <span className="font-bold">Settings</span>
-                   </DropdownMenuItem>
-                   <DropdownMenuSeparator className="my-2" />
-                   <DropdownMenuItem onClick={handleSignOut} className="rounded-xl py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                     <LogOut className="mr-3 h-4 w-4" />
-                     <span className="font-bold">Logout</span>
-                   </DropdownMenuItem>
-                 </DropdownMenuContent>
-               </DropdownMenu>
-             ) : (
-               <Button 
-                onClick={() => navigate('/login')} 
-                size="sm" 
-                className="h-9 px-6 rounded-lg font-black shadow-lg shadow-primary/20"
-               >
-                 Login
-               </Button>
-             )}
+              </DropdownMenu>
+            ) : (
+              <Link to="/login">
+                <Button
+                  size="sm"
+                  className="h-9 px-6 rounded-lg font-black shadow-lg shadow-primary/20"
+                >
+                  Login / Register
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Trigger */}
@@ -195,57 +196,57 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[350px] p-0 border-none">
               <div className="h-full flex flex-col bg-white">
-                 <div className="p-6 border-b flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">R</div>
-                      <span className="font-black text-xl">RAHI</span>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-6 w-6" /></Button>
-                 </div>
-                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Main Menu</p>
-                      {currentLinks.map((link) => (
-                        <Link
-                          key={link.href}
-                          to={link.href}
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors font-bold text-lg text-slate-700"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
-                    </div>
+                <div className="p-6 border-b flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">R</div>
+                    <span className="font-black text-xl">RAHI</span>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-6 w-6" /></Button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Main Menu</p>
+                    {currentLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        to={link.href}
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors font-bold text-lg text-slate-700"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
 
-                    <div className="h-px bg-slate-100" />
+                  <div className="h-px bg-slate-100" />
 
-                    <div className="space-y-4">
-                       <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50">
-                          <div className="flex items-center gap-3">
-                             <MapPin className="h-5 w-5 text-primary" />
-                             <div className="text-left">
-                                <p className="text-sm font-bold text-slate-800">Your Location</p>
-                                <p className="text-xs text-slate-500">New Delhi, Delhi</p>
-                             </div>
-                          </div>
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                       </button>
-                    </div>
-                 </div>
-                 
-                 {!user && (
-                    <div className="p-6 bg-slate-50">
-                       <Button onClick={() => { setIsOpen(false); navigate('/login'); }} className="w-full h-14 rounded-2xl font-black text-lg">
-                          Login to Account
-                       </Button>
-                    </div>
-                 )}
+                  <div className="space-y-4">
+                    <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50">
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-slate-800">Your Location</p>
+                          <p className="text-xs text-slate-500">New Delhi, Delhi</p>
+                        </div>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {!user && (
+                  <div className="p-6 bg-slate-50">
+                    <Button onClick={() => { setIsOpen(false); navigate('/login'); }} className="w-full h-14 rounded-2xl font-black text-lg">
+                      Login / Register
+                    </Button>
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>
 
         </div>
       </div>
-    </header>
+    </header >
   );
 }

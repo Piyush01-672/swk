@@ -1,19 +1,22 @@
-import { getDb } from '../config/db.js';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
-const COLLECTION = 'users';
+const UserSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  full_name: { type: String },
+  role: { type: String, enum: ['customer', 'worker', 'admin'], default: 'customer' },
+}, { timestamps: true });
 
-export const User = {
-  collection: () => getDb().collection(COLLECTION),
+UserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
 
-  validate: (data) => {
-    const errors = [];
-    if (!data.email) errors.push('Email is required');
-    if (!data.password) errors.push('Password is required');
-    return errors;
-  },
-
-  createIndexes: async () => {
-    const db = getDb();
-    await db.collection(COLLECTION).createIndex({ email: 1 }, { unique: true });
-  }
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
 };
+
+export default mongoose.model('User', UserSchema);

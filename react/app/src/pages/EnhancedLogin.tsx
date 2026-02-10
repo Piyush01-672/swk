@@ -1,261 +1,244 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Mail, Lock, Eye, EyeOff, User, Phone, 
-  Shield, Zap, Star, ArrowRight, Facebook
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Mail, Lock, Eye, EyeOff, Loader2,
+  Shield, CheckCircle2,
+  Sparkles, Heart, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-
-type LoginMode = 'customer' | 'worker' | 'thekedar';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function EnhancedLogin() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, verifyOTP } = useAuth();
   const { language } = useLanguage();
-  
-  const [loginMode, setLoginMode] = useState<LoginMode>('customer');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // OTP State
+  const [showOtp, setShowOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
     setLoading(true);
-    
+
     try {
-      if (signIn) {
-        await signIn(email, password);
-      }
-      
-      // Redirect based on role
-      if (loginMode === 'customer') {
-        navigate('/');
-      } else if (loginMode === 'worker') {
-        navigate('/worker/dashboard');
+      if (showOtp) {
+        // Verify OTP Step
+        // We need to pass true for shouldLogin (default)
+        const { error, data } = await verifyOTP(email, otp);
+        if (error) {
+          toast.error(error.message);
+        } else {
+          toast.success("Login Successful!");
+
+          // Use the 'data' we already destructured above
+          if (data && data.user) {
+            // Optional: check role here
+          }
+
+          // Force reload to ensure fresh context state
+          window.location.href = "/";
+        }
       } else {
-        navigate('/thekedar/dashboard');
+        // Initial Login Step
+        const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Login failed');
+        }
+
+        if (data.requireOtp) {
+          setShowOtp(true);
+          toast.info("OTP sent to your email!");
+        } else {
+          // Standard login (token received)
+          localStorage.setItem('token', data.token);
+          // Reload to sync context
+          window.location.reload();
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      toast.error(error.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const modeConfig = {
-    customer: {
-      title: language === 'hi' ? 'ग्राहक लॉगिन' : 'Customer Login',
-      subtitle: language === 'hi' ? 'अपनी सेवाएं प्राप्त करें' : 'Access your services',
-      color: 'from-blue-500 to-cyan-500',
-      icon: User
-    },
-    worker: {
-      title: language === 'hi' ? 'कारीगर लॉगिन' : 'Worker Login',
-      subtitle: language === 'hi' ? 'अपनी कमाई प्रबंधित करें' : 'Manage your earnings',
-      color: 'from-emerald-500 to-teal-500',
-      icon: Shield
-    },
-    thekedar: {
-      title: language === 'hi' ? 'ठेकेदार लॉगिन' : 'Contractor Login',
-      subtitle: language === 'hi' ? 'अपनी टीम प्रबंधित करें' : 'Manage your team',
-      color: 'from-purple-500 to-fuchsia-500',
-      icon: Star
-    }
-  };
-
-  const currentMode = modeConfig[loginMode];
-  const Icon = currentMode.icon;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex items-center justify-center p-4">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary/10 blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-accent/10 blur-3xl"></div>
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row overflow-hidden">
+      {/* Left Branding (Split view) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative items-center justify-center p-12 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] -mr-64 -mt-64" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] -ml-64 -mb-64" />
+
+        <div className="relative z-10 max-w-lg text-white">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
+          >
+            <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/40 mb-8">
+              <Sparkles className="h-10 w-10 text-white" />
+            </div>
+            <h2 className="text-5xl font-black mb-6 leading-tight">Welcome back to RAHI.</h2>
+            <p className="text-xl text-slate-400 font-medium">Log in to manage your bookings, earnings, and teams.</p>
+          </motion.div>
+
+          <div className="space-y-6">
+            {[
+              { icon: Shield, text: "Secure 2FA Login Protection" },
+              { icon: Heart, text: "Wait-free instant access" },
+              { icon: CheckCircle2, text: "Manage everything in one place" }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+                className="flex items-center gap-4 text-slate-300 font-bold"
+              >
+                <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-primary">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <span>{item.text}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <motion.div 
-        className="w-full max-w-md relative z-10"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Mode Selector */}
-        <div className="flex rounded-lg bg-card border p-1 mb-8">
-          {(Object.keys(modeConfig) as LoginMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setLoginMode(mode)}
-              className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                loginMode === mode
-                  ? `bg-gradient-to-r ${modeConfig[mode].color} text-white shadow-md`
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {modeConfig[mode].title.split(' ')[0]}
-            </button>
-          ))}
+      {/* Right Form */}
+      <div className="flex-1 flex flex-col p-6 lg:p-12 items-center justify-center bg-white relative">
+        <div className="absolute top-6 left-6 flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="rounded-full bg-slate-50">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
         </div>
 
-        <Card className="shadow-2xl border-0">
-          <CardHeader className="text-center pb-6">
-            <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-r ${currentMode.color} mb-4`}>
-              <Icon className="h-8 w-8 text-white" />
-            </div>
-            <CardTitle className="text-2xl">{currentMode.title}</CardTitle>
-            <CardDescription>{currentMode.subtitle}</CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* Social Login */}
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full h-12">
-                <Zap className="h-5 w-5 mr-2" />
-                {language === 'hi' ? 'गूगल के साथ जारी रखें' : 'Continue with Google'}
-              </Button>
-              <Button variant="outline" className="w-full h-12">
-                <Facebook className="h-5 w-5 mr-2" />
-                {language === 'hi' ? 'फेसबुक के साथ जारी रखें' : 'Continue with Facebook'}
-              </Button>
-            </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md space-y-8"
+        >
+          <div className="text-center">
+            <h1 className="text-4xl font-black text-slate-900 mb-2">
+              {showOtp ? "Verify Login" : (language === 'hi' ? 'लॉगिन करें' : 'Welcome Back')}
+            </h1>
+            <p className="text-slate-500 font-medium">
+              {showOtp ? `Enter code sent to ${email}` : (language === 'hi' ? 'अपना खाता एक्सेस करें' : 'Sign in to your account')}
+            </p>
+          </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {language === 'hi' ? 'या ईमेल के साथ' : 'Or continue with email'}
-                </span>
-              </div>
-            </div>
-
-            {/* Email Login Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  {language === 'hi' ? 'ईमेल पता' : 'Email Address'}
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={language === 'hi' ? 'अपना ईमेल दर्ज करें' : 'Enter your email'}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-12"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">
-                  {language === 'hi' ? 'पासवर्ड' : 'Password'}
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder={language === 'hi' ? 'अपना पासवर्ड दर्ज करें' : 'Enter your password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-12"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className={`w-full h-12 text-lg bg-gradient-to-r ${currentMode.color}`}
-                disabled={loading}
+          <AnimatePresence mode="wait">
+            {!showOtp ? (
+              <motion.div
+                key="login-form"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-200/50 space-y-5"
               >
-                {loading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    {language === 'hi' ? 'लॉगिन हो रहा है...' : 'Logging in...'}
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-600 ml-1">Email address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-12 h-14 bg-slate-50 border-slate-100 rounded-2xl font-bold"
+                    />
                   </div>
-                ) : (
-                  <div className="flex items-center">
-                    {language === 'hi' ? 'लॉगिन करें' : 'Login'}
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between ml-1">
+                    <Label className="font-bold text-slate-600">Password</Label>
+                    <Link to="/forgot-password" className="text-xs font-bold text-primary hover:underline">Forgot?</Link>
                   </div>
-                )}
-              </Button>
-            </form>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-12 pr-12 h-14 bg-slate-50 border-slate-100 rounded-2xl font-bold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
 
-            {/* Additional Links */}
-            <div className="text-center space-y-3 pt-4">
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-primary hover:underline"
+                <Button onClick={handleLogin} disabled={loading} className="w-full h-16 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4">
+                  {loading ? <Loader2 className="animate-spin" /> : "Sign In"}
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="otp-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-200/50 space-y-5 text-center"
               >
-                {language === 'hi' ? 'पासवर्ड भूल गए?' : 'Forgot Password?'}
-              </Link>
-              
-              <div className="text-sm text-muted-foreground">
-                {language === 'hi' ? 'खाता नहीं है?' : "Don't have an account?"}{' '}
-                <Link 
-                  to="/register" 
-                  className="text-primary font-medium hover:underline"
-                >
-                  {language === 'hi' ? 'रजिस्टर करें' : 'Register'}
-                </Link>
-              </div>
-            </div>
-          </CardContent>
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold">Two-Factor Auth</h3>
+                <p className="text-slate-500">Enter the security code sent to <br /><span className="font-bold text-slate-900">{email}</span></p>
 
-          <CardFooter className="bg-muted/30 rounded-b-2xl">
-            <div className="w-full text-center">
-              <p className="text-xs text-muted-foreground">
-                {language === 'hi' 
-                  ? 'आपकी सुरक्षा हमारी प्राथमिकता है' 
-                  : 'Your security is our priority'
-                }
-              </p>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <Shield className="h-4 w-4 text-emerald-500" />
-                <span className="text-xs text-muted-foreground">
-                  {language === 'hi' ? '100% सुरक्षित लॉगिन' : '100% Secure Login'}
-                </span>
-              </div>
-            </div>
-          </CardFooter>
-        </Card>
+                <Input
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="h-14 bg-slate-50 border-slate-100 rounded-2xl font-bold text-center text-2xl tracking-widest"
+                  maxLength={6}
+                  autoFocus
+                />
 
-        {/* Trust Badges */}
-        <div className="flex justify-center gap-6 mt-8 text-center">
-          {[
-            { icon: Shield, text: language === 'hi' ? 'सुरक्षित' : 'Secure' },
-            { icon: Zap, text: language === 'hi' ? 'तेज़' : 'Fast' },
-            { icon: Star, text: language === 'hi' ? 'विश्वसनीय' : 'Trusted' }
-          ].map((item, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <item.icon className="h-5 w-5 text-primary" />
-              </div>
-              <span className="text-xs text-muted-foreground">{item.text}</span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+                <Button onClick={handleLogin} disabled={loading} className="w-full h-16 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4">
+                  {loading ? <Loader2 className="animate-spin" /> : "Verify & Login"}
+                </Button>
+
+                <button onClick={() => setShowOtp(false)} className="text-sm font-bold text-slate-400 hover:text-slate-600 mt-4">
+                  Back to Login
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <p className="text-center text-slate-400 font-bold">
+            Don't have an account? <Link to="/register" className="text-primary hover:underline">Create Account</Link>
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

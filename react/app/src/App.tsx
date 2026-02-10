@@ -64,7 +64,7 @@ import ThekedarMapHub from "@/components/maps/ThekedarMapHub";
 
 
 // PLACEHOLDERS FOR CRASH TESTING
-const Placeholder = ({name}: {name:string}) => <div className="p-10"><h1>{name} Placeholder</h1><p>The actual component is temporarily disabled for debugging.</p></div>;
+const Placeholder = ({ name }: { name: string }) => <div className="p-10"><h1>{name} Placeholder</h1><p>The actual component is temporarily disabled for debugging.</p></div>;
 
 // Initialize QueryClient outside component to prevent re-creation loops
 const queryClient = new QueryClient({
@@ -79,44 +79,44 @@ const queryClient = new QueryClient({
 // Protected Route Component
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode; role?: string }) => {
   const { user, loading, profile } = useAuth();
-  
+
   if (loading) {
     return <div>Loading...</div>; // You can replace this with a spinner
   }
-  
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
-  
+
   // Redirect user based on role if accessing home page
   if (!profile) {
     return <div>Loading profile...</div>;
   }
-  
+
   if (role && profile.role !== role) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
 };
 
 // Worker Protected Route Component
 const WorkerProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, profile, loading } = useAuth();
-  
+
   if (loading) {
     return <div>Loading...</div>;
   }
-  
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
-  
+
   // Wait for profile to load
   if (!profile) {
     return <div>Loading profile...</div>;
   }
-  
+
   if (profile.role !== 'worker') {
     // If user is a thekedar, they might be accessing worker routes
     if (profile.role === 'thekedar') {
@@ -124,28 +124,28 @@ const WorkerProtectedRoute = ({ children }: { children: ReactNode }) => {
     }
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 // Role-Based Home Redirect Component
 const RoleBasedHome = () => {
   const { user, profile, loading } = useAuth();
-  
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><LoadingSpinner size={40} /></div>;
   }
-  
+
   // If user is authenticated but no profile exists, redirect to login to complete registration
   if (user && !profile) {
     return <Navigate to="/" replace />;
   }
-  
+
   // If no user is authenticated, show the default index
   if (!user) {
     return <Index />;
   }
-  
+
   // If user is authenticated and has a profile, redirect based on role
   if (profile?.role === 'worker') {
     return <Navigate to="/worker/dashboard" replace />;
@@ -169,13 +169,13 @@ const App = () => {
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<RoleBasedHome />} />
-                  
+
                   {/* Admin Portal - Hidden Route */}
                   <Route path="/admin-portal-2026" element={<AdminDashboard />} />
-                  
-                  <Route path="/login" element={<Navigate to="/" replace />} />
+
+                  <Route path="/login" element={<EnhancedLogin />} />
                   <Route path="/register" element={<Register />} />
-                  
+
                   {/* ENABLED ROUTES */}
                   <Route path="/test" element={<TestPage />} />
                   <Route path="/services" element={<Services />} />
@@ -207,10 +207,10 @@ const App = () => {
 
                   <Route path="/worker/onboarding" element={
                     <WorkerProtectedRoute>
-                         <WorkerOnboardingPage />
+                      <WorkerOnboardingPage />
                     </WorkerProtectedRoute>
                   } />
-                  
+
                   {/* Worker Routes */}
                   <Route path="/worker" element={
                     <WorkerProtectedRoute>
@@ -228,14 +228,14 @@ const App = () => {
                     <Route path="map" element={<WorkerMapDashboard />} />
                     <Route path="settings" element={<WorkerSettingsPage />} />
                   </Route>
-                  
+
                   {/* Thekedar Routes */}
-                   <Route path="/thekedar/onboarding" element={
+                  <Route path="/thekedar/onboarding" element={
                     <ThekedarProtectedRoute>
-                         <ThekedarOnboardingPage />
+                      <ThekedarOnboardingPage />
                     </ThekedarProtectedRoute>
                   } />
-                  
+
                   <Route path="/thekedar" element={
                     <ThekedarProtectedRoute>
                       <ThekedarLayout />
@@ -253,7 +253,7 @@ const App = () => {
                     <Route path="profile" element={<ThekedarProfile />} />
                     <Route path="settings" element={<ThekedarSettings />} />
                   </Route>
-                  
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

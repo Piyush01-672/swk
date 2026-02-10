@@ -20,12 +20,12 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string, role: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ data?: any, error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   hasCompletedOnboarding: (userId: string) => Promise<boolean>;
   signInWithOTP: (phone: string) => Promise<{ error: Error | null }>;
-  verifyOTP: (phone: string, token: string) => Promise<{ data: any; error: Error | null }>;
+  verifyOTP: (email: string, otp: string, shouldLogin?: boolean) => Promise<{ data: any; error: Error | null }>;
   login?: (provider: string) => Promise<{ error: Error | null }>;
 }
 
@@ -47,16 +47,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const res = await fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) {
           const { user } = await res.json();
           setUser(user);
           // Normalize ID handling
           const userId = user.id || user._id;
-          setProfile({ 
-            id: userId, 
-            full_name: user.full_name, 
-            email: user.email, 
+          setProfile({
+            id: userId,
+            full_name: user.full_name,
+            email: user.email,
             role: user.role,
             // Preserve other fields
             phone: user.phone,
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, phone: string, role: string) => {
     try {
-      const res = await fetch(`${API}/api/auth/register`, {
+      const res = await fetch(`${API}/auth/register`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, full_name: fullName, role })
       });
@@ -90,11 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const err = await res.json();
         return { error: new Error(err.message || 'Registration failed') };
       }
-      const data = await res.json();
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      const userId = data.user.id || data.user._id;
-      setProfile({ id: userId, full_name: data.user.full_name, email: data.user.email, role: data.user.role });
+      // Registration now sends OTP, does not return token/user immediately
       return { error: null };
     } catch (err: any) {
       return { error: err as Error };
@@ -103,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await fetch(`${API}/api/auth/login`, {
+      const res = await fetch(`${API}/auth/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -112,11 +108,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error(err.message || 'Login failed') };
       }
       const data = await res.json();
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      const userId = data.user.id || data.user._id;
-      setProfile({ id: userId, full_name: data.user.full_name, email: data.user.email, role: data.user.role });
-      return { error: null };
+
+      // If 2FA is required, we don't set user/token yet
+      if (data.requireOtp) {
+        return { data, error: null };
+      }
+
+      // Normal login (if 2FA disabled or handled otherwise)
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        setUser(data.user);
+        const userId = data.user?.id || data.user?._id;
+        if (userId) {
+          setProfile({ id: userId, full_name: data.user.full_name, email: data.user.email, role: data.user.role });
+        }
+      }
+      return { data, error: null };
     } catch (err: any) {
       return { error: err as Error };
     }
@@ -126,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithOTP = async (phone: string) => {
     try {
       // If backend has OTP endpoints, call them; otherwise return not implemented
-      const res = await fetch(`${API}/api/auth/send-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+      const res = await fetch(`${API}/auth/send-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
       if (!res.ok) return { error: new Error('OTP send failed') };
       return { error: null };
     } catch (err: any) {
@@ -134,13 +141,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const verifyOTP = async (phone: string, token: string) => {
+  const verifyOTP = async (email: string, otp: string, shouldLogin: boolean = true) => {
     try {
-      const res = await fetch(`${API}/api/auth/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, token }) });
-      if (!res.ok) return { data: null, error: new Error('OTP verification failed') };
+      const res = await fetch(`${API}/auth/verify-otp`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        return { data: null, error: new Error(err.message || 'OTP verification failed') };
+      }
       const data = await res.json();
-      if (data?.token) localStorage.setItem('token', data.token);
-      if (data?.user) setUser(data.user);
+
+      if (shouldLogin) {
+        if (data?.token) localStorage.setItem('token', data.token);
+        if (data?.user) setUser(data.user);
+      }
+
       return { data, error: null };
     } catch (err: any) {
       return { data: null, error: err as Error };
